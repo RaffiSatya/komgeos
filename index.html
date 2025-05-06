@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>WebMap Mapbox dengan Extrude Building & Layer Control</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #marker {
+            background-image: url('https://docs.mapbox.com/mapbox-gl-js/assets/washington-monument.jpg');
+            background-size: cover;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .mapboxgl-popup {
+            max-width: 300px;
+            font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        }
+
+        /* Styling for the dropdown container */
+        .dropdown {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: #ffffff;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 1;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown:hover {
+            background-color: #f0f0f0;
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 45px;
+            left: 0;
+            min-width: 180px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            z-index: 999;
+            transition: all 0.3s ease;
+        }
+
+        .dropdown-content label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            cursor: pointer;
+        }
+
+        .dropdown-content label:hover {
+            background-color: #f7f7f7;
+            border-radius: 5px;
+        }
+
+        .dropdown-content input {
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+
+        /* Hover styling for checkboxes */
+        .dropdown-content input:checked {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        /* Added nice transition effect when showing/hiding dropdown */
+        .dropdown-content {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .dropdown:hover .dropdown-content {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            font-size: 14px;
+            z-index: 999;
+            max-width: 220px;
+        }
+
+        .legend h4 {
+            margin: 0 0 10px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .legend .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .legend .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+        }
+
+        .legend .legend-label {
+            font-size: 12px;
+        }
+
+        .legend .isochrone-legend-5 {
+            background-color: #fbb4b9;
+        }
+
+        .legend .isochrone-legend-10 {
+            background-color: #f768a1;
+        }
+
+        .legend .isochrone-legend-15 {
+            background-color: #dd3497;
+        }
+
+        .legend .isochrone-legend-20 {
+            background-color: #ae017e;
+        }
+
+        .legend .isochrone-legend-25 {
+            background-color: #7a0177;
+        }
+
+        .legend .isochrone-legend-30 {
+            background-color: #49006a;
+        }
+
+        .legend .building-legend-commercial {
+            background-color: #3bb2d0;
+        }
+
+        .legend .building-legend-Transportation {
+            background-color: #223b53;
+        }
+
+        .legend .building-legend-office {
+            background-color: #f28cb1;
+        }
+
+        /* Add spacing to the legend items */
+        .legend-item {
+            padding: 5px 0;
+        }
+        .marker {
+            position: relative;
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border-radius: 50%;
+            border: 3px solid #ff6347; /* border color */
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .marker img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Style for the label */
+        .marker-label {
+            position: absolute;
+            bottom: -25px;
+            left: -10px;
+            background-color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #333;
+            text-align: center;
+            font-weight: bold;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Add Montserrat Font */
+        .marker-label {
+            font-family: 'Montserrat', sans-serif;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="legend">
+        <h4>Legend</h4>
+        <strong>Travel Time</strong>
+        <div class="legend-item">
+            <div class="legend-color isochrone-legend-5"></div>
+            <div class="legend-label">5 min</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color isochrone-legend-10"></div>
+            <div class="legend-label">10 min</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color isochrone-legend-15"></div>
+            <div class="legend-label">15 min</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color isochrone-legend-20"></div>
+            <div class="legend-label">20 min</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color isochrone-legend-25"></div>
+            <div class="legend-label">25 min</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color isochrone-legend-30"></div>
+            <div class="legend-label">30 min</div>
+        </div>
+        <strong>Buildings</strong>
+        <div class="legend-item">
+            <div class="legend-color building-legend-commercial"></div>
+            <div class="legend-label">Commercial</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color building-legend-Transportation"></div>
+            <div class="legend-label">Hotel & Transportation</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color building-legend-office"></div>
+            <div class="legend-label">Office</div>
+        </div>
+    </div>
+
+    <script
+        src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.3/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet"
+        href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.3/mapbox-gl-geocoder.css"
+        type="text/css">
+
+    <div id="map"></div>
+    <div class="dropdown">
+        <span>Layer</span>
+        <div class="dropdown-content">
+            <label><input type="checkbox" id="isochrone" checked> Isochrone</label>
+            <label><input type="checkbox" id="buildings" checked> Buildings</label>
+            <label><input type="checkbox" id="edges" checked> Edges</label>
+        </div>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoicmFmZmlzYXR5YW4iLCJhIjoiY2xhcTg5b3czMWc2bzQxbzJkb3g5ZTIzbSJ9._XfNtiapF6wZ03D0sGo_YQ'; // ganti dengan tokenmu
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/light-v11',
+            center: [106.8272, -6.1751], // ganti sesuai lokasi data kamu
+            zoom: 14,
+            pitch: 45,
+            bearing: -17.6,
+            antialias: true
+        });
+
+        map.on('load', () => {
+            // ======== Load GeoJSON Sources ========
+            map.addSource('isochrone', {
+                type: 'geojson',
+                data: 'data/isochrone_polys.geojson'
+            });
+
+            map.addSource('buildings', {
+                type: 'geojson',
+                data: 'data/gdf_buildings.geojson'
+            });
+
+            map.addSource('edges', {
+                type: 'geojson',
+                data: 'data/edge_gdf.geojson'
+            });
+
+
+            // ======== Isochrone Layer ========
+            map.addLayer({
+                id: 'isochrone-layer',
+                type: 'fill',
+                source: 'isochrone',
+                paint: {
+                    'fill-color': [
+                        'match',
+                        ['get', 'travel_time'],
+                        5, '#fbb4b9',
+                        10, '#f768a1',
+                        15, '#dd3497',
+                        20, '#ae017e',
+                        25, '#7a0177',
+                        30, '#49006a',
+                        '#ffffff'  // fallback jika tidak cocok
+                    ],
+                    'fill-opacity': 0.5
+                }
+            });
+
+            // ======== Buildings Extruded ========
+            map.addLayer({
+                id: 'building-extrusion',
+                type: 'fill-extrusion',
+                source: 'buildings',
+                paint: {
+                    'fill-extrusion-color': [
+                        'match',
+                        ['get', 'building'],
+                        'office', '#f28cb1',
+                        'commercial', '#3bb2d0',
+                        'transportation', '#223b53',
+                        'hotel', '#223b53',
+            /* other */ '#cccccc'
+                    ],
+                    'fill-extrusion-height': [
+                        'case',
+                        ['has', 'height'], ['get', 'height'], 25 // fallback height jika tidak ada
+                    ],
+                    'fill-extrusion-opacity': 0.8
+                }
+            });
+
+
+            // ======== Edges Layer ========
+            map.addLayer({
+                id: 'edges-line',
+                type: 'line',
+                source: 'edges',
+                paint: {
+                    'line-color': '#888',
+                    'line-width': 2
+                }
+            });
+
+            map.on('click', 'building-extrusion', (e) => {
+                // Get the feature that was clicked
+                const feature = e.features[0];
+
+                // Check if 'name' attribute exists
+                const buildingName = feature.properties.name || 'Unknown Building';
+
+                // Create a popup
+                new mapboxgl.Popup()
+                    .setLngLat(e.lngLat)
+                    .setHTML(`<h3>${buildingName}</h3>`)
+                    .addTo(map);
+            });
+
+            // Change cursor to pointer when hovering over buildings
+            map.on('mouseenter', 'building-layer', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', 'building-layer', () => {
+                map.getCanvas().style.cursor = '';
+            });
+
+
+
+            // ======== Hover Popup Isochrone ========
+            const popup = new mapboxgl.Popup({
+                closeButton: false,
+                closeOnClick: false
+            });
+
+            map.on('mousemove', 'isochrone-layer', (e) => {
+                map.getCanvas().style.cursor = 'pointer';
+
+                const coordinates = e.lngLat;
+                const properties = e.features[0].properties;
+
+                const popupContent = Object.entries(properties)
+                    .map(([key, val]) => `<strong>Waktu tempuh</strong>: ${val} menit`)
+                    .join('<br>');
+
+                popup.setLngLat(coordinates)
+                    .setHTML(popupContent)
+                    .addTo(map);
+            });
+
+            map.on('mouseleave', 'isochrone-layer', () => {
+                map.getCanvas().style.cursor = '';
+                popup.remove();
+            });
+
+            // ======== Toggle Layer Visibility ========
+            function toggleLayer(layerId, layerVisible) {
+                if (layerVisible) {
+                    map.setLayoutProperty(layerId, 'visibility', 'visible');
+                } else {
+                    map.setLayoutProperty(layerId, 'visibility', 'none');
+                }
+            }
+
+            // Event listeners for checkboxes
+            document.getElementById('isochrone').addEventListener('change', (e) => {
+                toggleLayer('isochrone-layer', e.target.checked);
+            });
+            document.getElementById('buildings').addEventListener('change', (e) => {
+                toggleLayer('building-extrusion', e.target.checked);
+            });
+            document.getElementById('edges').addEventListener('change', (e) => {
+                toggleLayer('edges-line', e.target.checked);
+            });
+        });
+        map.on('load', () => {
+            const el = document.createElement('div');
+            el.className = 'marker';
+
+            // You can replace this image URL with any image you want for the marker
+            const img = document.createElement('img');
+            img.src = 'https://jakartamrt.co.id/sites/default/files/2024-10/WhatsApp%20Image%202024-10-08%20at%2017.13.34_1.jpeg'; // ganti dengan link gambar foto kamu
+            el.appendChild(img);
+
+            // Add marker to map
+            new mapboxgl.Marker(el)
+                .setLngLat([106.8228708, -6.1905508]) // koordinat MRT Bundaran HI
+                .addTo(map);
+                
+        });
+
+
+        map.addControl(
+            new MapboxGeocoder({
+                accessToken: mapboxgl.accessToken,
+                mapboxgl: mapboxgl
+            })
+        );
+        map.addControl(new mapboxgl.NavigationControl());
+        map.addControl(new mapboxgl.ScaleControl());
+    </script>
+</body>
+
+</html>
